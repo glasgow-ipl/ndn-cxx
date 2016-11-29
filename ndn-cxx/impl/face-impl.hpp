@@ -31,8 +31,10 @@
 #include "ndn-cxx/lp/tags.hpp"
 #include "ndn-cxx/mgmt/nfd/command-options.hpp"
 #include "ndn-cxx/mgmt/nfd/controller.hpp"
-#include "ndn-cxx/transport/tcp-transport.hpp"
-#include "ndn-cxx/transport/unix-transport.hpp"
+#include "ndn-cxx/transport/transport.hpp"
+// #include "ndn-cxx/transport/tcp-transport.hpp"
+// #include "ndn-cxx/transport/unix-transport.hpp"
+#include "ndn-cxx/util/config-file.hpp"
 #include "ndn-cxx/util/logger.hpp"
 #include "ndn-cxx/util/scheduler.hpp"
 #include "ndn-cxx/util/signal.hpp"
@@ -63,8 +65,9 @@ public:
     , m_scheduler(m_face.getIoService())
     , m_nfdController(m_face, keyChain)
   {
-    auto onEmptyPitOrNoRegisteredPrefixes = [this] {
-      // Without this extra "post", transport can get paused (-async_read) and then resumed
+    auto postOnEmptyPitOrNoRegisteredPrefixes = [this] {
+      m_scheduler.scheduleEvent(time::seconds(0), bind(&Impl::onEmptyPitOrNoRegisteredPrefixes, this));
+      // without this extra "post", transport can get paused (-async_read) and then resumed
       // (+async_read) from within onInterest/onData callback.  After onInterest/onData
       // finishes, there is another +async_read with the same memory block.  A few of such
       // async_read duplications can cause various effects and result in segfault.
@@ -313,9 +316,16 @@ public: // IO routine
   }
 
   void
+  onEmptyPitOrNoRegisteredPrefixes()
+  {
+    if (m_pendingInterestTable.empty() && m_registeredPrefixTable.empty()) {
+      m_face.m_transport->pause();
+    }
+  }
+
+  void
   shutdown()
   {
-    m_ioServiceWork.reset();
     m_pendingInterestTable.clear();
     m_registeredPrefixTable.clear();
   }
@@ -413,8 +423,6 @@ private:
   detail::RecordContainer<PendingInterest> m_pendingInterestTable;
   detail::RecordContainer<InterestFilterRecord> m_interestFilterTable;
   detail::RecordContainer<RegisteredPrefix> m_registeredPrefixTable;
-
-  unique_ptr<boost::asio::io_service::work> m_ioServiceWork; // if thread needs to be preserved
 
   friend Face;
 };
