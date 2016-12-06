@@ -30,7 +30,7 @@ namespace ndn {
 namespace security {
 inline namespace v2 {
 
-NDN_LOG_INIT(ndn.security.CertificateFetcher);
+NDN_LOG_INIT(ndn.security.v2.CertificateFetcher.FromNetwork);
 
 #define NDN_LOG_DEBUG_DEPTH(x) NDN_LOG_DEBUG(std::string(state->getDepth() + 1, '>') << " " << x)
 #define NDN_LOG_TRACE_DEPTH(x) NDN_LOG_TRACE(std::string(state->getDepth() + 1, '>') << " " << x)
