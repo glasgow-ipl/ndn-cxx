@@ -65,18 +65,15 @@ public:
     , m_scheduler(m_face.getIoService())
     , m_nfdController(m_face, keyChain)
   {
-    auto postOnEmptyPitOrNoRegisteredPrefixes = [this] {
-      m_scheduler.scheduleEvent(time::seconds(0), bind(&Impl::onEmptyPitOrNoRegisteredPrefixes, this));
-      // without this extra "post", transport can get paused (-async_read) and then resumed
+    auto onEmptyPitOrNoRegisteredPrefixes = [this] {
+      // Without this extra "post", transport can get paused (-async_read) and then resumed
       // (+async_read) from within onInterest/onData callback.  After onInterest/onData
       // finishes, there is another +async_read with the same memory block.  A few of such
       // async_read duplications can cause various effects and result in segfault.
-      m_face.getIoService().post([this] {
+      m_scheduler.schedule(time::seconds(0), [this] {
         if (m_pendingInterestTable.empty() && m_registeredPrefixTable.empty()) {
           m_face.m_transport->pause();
-          if (!m_ioServiceWork) {
-            m_processEventsTimeoutEvent.cancel();
-          }
+          m_processEventsTimeoutEvent.cancel();
         }
       });
     };
@@ -112,7 +109,7 @@ public: // consumer
   void
   asyncRemovePendingInterest(detail::RecordId id)
   {
-    m_face.getIoService().post([id, w = weak_ptr<Impl>{shared_from_this()}] { // use weak_from_this() in C++17
+    m_scheduler.schedule(time::seconds(0), [id, w = weak_ptr<Impl>{shared_from_this()}] { // use weak_from_this() in C++17
       auto impl = w.lock();
       if (impl != nullptr) {
         impl->m_pendingInterestTable.erase(id);
@@ -196,7 +193,7 @@ public: // producer
   void
   asyncUnsetInterestFilter(detail::RecordId id)
   {
-    m_face.getIoService().post([id, w = weak_ptr<Impl>{shared_from_this()}] { // use weak_from_this() in C++17
+    m_scheduler.schedule(time::seconds(0), [id, w = weak_ptr<Impl>{shared_from_this()}] { // use weak_from_this() in C++17
       auto impl = w.lock();
       if (impl != nullptr) {
         impl->unsetInterestFilter(id);
@@ -293,7 +290,7 @@ public: // prefix registration
                         const UnregisterPrefixSuccessCallback& onSuccess,
                         const UnregisterPrefixFailureCallback& onFailure)
   {
-    m_face.getIoService().post([=, w = weak_ptr<Impl>{shared_from_this()}] { // use weak_from_this() in C++17
+    m_scheduler.schedule(time::seconds(0), [=, w = weak_ptr<Impl>{shared_from_this()}] { // use weak_from_this() in C++17
       auto impl = w.lock();
       if (impl != nullptr) {
         impl->unregisterPrefix(id, onSuccess, onFailure);
@@ -306,20 +303,11 @@ public: // IO routine
   ensureConnected(bool wantResume)
   {
     if (!m_face.m_transport->isConnected()) {
-      m_face.m_transport->connect(m_face.getIoService(),
-                                  [this] (const Block& wire) { m_face.onReceiveElement(wire); });
+      m_face.m_transport->connect([this] (const Block& wire) { m_face.onReceiveElement(wire); });
     }
 
     if (wantResume && !m_face.m_transport->isReceiving()) {
       m_face.m_transport->resume();
-    }
-  }
-
-  void
-  onEmptyPitOrNoRegisteredPrefixes()
-  {
-    if (m_pendingInterestTable.empty() && m_registeredPrefixTable.empty()) {
-      m_face.m_transport->pause();
     }
   }
 

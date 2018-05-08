@@ -23,6 +23,7 @@
 #define NDN_CXX_IMS_IN_MEMORY_STORAGE_HPP
 
 #include "ndn-cxx/ims/in-memory-storage-entry.hpp"
+#include "ndn-cxx/util/scheduler.hpp"
 
 #include <iterator>
 #include <stack>
@@ -121,7 +122,7 @@ public:
    *  The InMemoryStorage created through this method will handle MustBeFresh in interest processing
    */
   explicit
-  InMemoryStorage(boost::asio::io_service& ioService,
+  InMemoryStorage(DummyIoService& ioService,
                   size_t limit = std::numeric_limits<size_t>::max());
 
   /** @note Please make sure to implement it to free m_freeEntries and evict
@@ -341,7 +342,7 @@ private:
   /// memory pool
   std::stack<InMemoryStorageEntry*> m_freeEntries;
   /// scheduler
-  unique_ptr<Scheduler> m_scheduler;
+  unique_ptr<scheduler::Scheduler> m_scheduler;
 };
 
 } // namespace ndn

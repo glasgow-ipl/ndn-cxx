@@ -83,7 +83,7 @@ Scheduler::EventQueueCompare::operator()(const shared_ptr<EventInfo>& a,
   return a->expireTime < b->expireTime;
 }
 
-Scheduler::Scheduler(boost::asio::io_service& ioService)
+Scheduler::Scheduler(DummyIoService& ioService)
 {
 }
 
