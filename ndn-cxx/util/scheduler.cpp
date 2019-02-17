@@ -20,8 +20,8 @@
  */
 
 #include "ndn-cxx/util/scheduler.hpp"
-#include "ndn-cxx/util/impl/steady-timer.hpp"
-#include "ndn-cxx/util/scope.hpp"
+
+#include <boost/scope_exit.hpp>
 
 namespace ndn {
 namespace scheduler {
@@ -31,9 +31,10 @@ namespace scheduler {
 class EventInfo : noncopyable
 {
 public:
-  EventInfo(time::nanoseconds after, EventCallback&& cb)
+  EventInfo(time::nanoseconds after, EventCallback&& cb, uint32_t context)
     : callback(std::move(cb))
     , expireTime(time::steady_clock::now() + after)
+    , context(context)
   {
   }
 
@@ -48,6 +49,7 @@ public:
   Scheduler::EventQueue::const_iterator queueIt;
   time::steady_clock::TimePoint expireTime;
   bool isExpired = false;
+  uint32_t context = 0;
 };
 
 EventId::EventId(Scheduler& sched, weak_ptr<EventInfo> info)
@@ -82,18 +84,20 @@ Scheduler::EventQueueCompare::operator()(const shared_ptr<EventInfo>& a,
 }
 
 Scheduler::Scheduler(boost::asio::io_service& ioService)
-  : m_timer(make_unique<util::detail::SteadyTimer>(ioService))
 {
 }
 
-Scheduler::~Scheduler() = default;
+Scheduler::~Scheduler()
+{
+  cancelAllEvents();
+}
 
 EventId
 Scheduler::schedule(time::nanoseconds after, EventCallback callback)
 {
   BOOST_ASSERT(callback != nullptr);
 
-  auto i = m_queue.insert(std::make_shared<EventInfo>(after, std::move(callback)));
+  auto i = m_queue.insert(std::make_shared<EventInfo>(after, std::move(callback), ns3::Simulator::GetContext()));
   (*i)->queueIt = i;
 
   if (!m_isEventExecuting && i == m_queue.begin()) {
@@ -111,8 +115,11 @@ Scheduler::cancelImpl(const shared_ptr<EventInfo>& info)
     return;
   }
 
-  if (info->queueIt == m_queue.begin()) {
-    m_timer->cancel();
+  if (m_timerEvent) {
+    if (!m_timerEvent->IsExpired()) {
+      ns3::Simulator::Remove(*m_timerEvent);
+    }
+    m_timerEvent.reset();
   }
   m_queue.erase(info->queueIt);
 
@@ -125,30 +132,33 @@ void
 Scheduler::cancelAllEvents()
 {
   m_queue.clear();
-  m_timer->cancel();
+  if (m_timerEvent) {
+    if (!m_timerEvent->IsExpired()) {
+      ns3::Simulator::Remove(*m_timerEvent);
+    }
+    m_timerEvent.reset();
+  }
 }
 
 void
 Scheduler::scheduleNext()
 {
   if (!m_queue.empty()) {
-    m_timer->expires_from_now((*m_queue.begin())->expiresFromNow());
-    m_timer->async_wait([this] (const auto& error) { this->executeEvent(error); });
+    m_timerEvent = ns3::Simulator::Schedule(ns3::NanoSeconds((*m_queue.begin())->expiresFromNow().count()),
+                                            &Scheduler::executeEvent, this);
   }
 }
 
 void
-Scheduler::executeEvent(const boost::system::error_code& error)
+Scheduler::executeEvent()
 {
-  if (error) { // e.g., cancelled
-    return;
-  }
-
-  auto guard = make_scope_exit([this] {
-    m_isEventExecuting = false;
-    scheduleNext();
-  });
   m_isEventExecuting = true;
+
+  m_timerEvent.reset();
+  BOOST_SCOPE_EXIT(this_) {
+    this_->m_isEventExecuting = false;
+    this_->scheduleNext();
+  } BOOST_SCOPE_EXIT_END
 
   // process all expired events
   auto now = time::steady_clock::now();
@@ -161,7 +171,12 @@ Scheduler::executeEvent(const boost::system::error_code& error)
 
     m_queue.erase(head);
     info->isExpired = true;
-    info->callback();
+    if (ns3::Simulator::GetContext() == info->context) {
+      info->callback();
+    }
+    else {
+      ns3::Simulator::ScheduleWithContext(info->context, ns3::Seconds(0), ns3::MakeEvent(info->callback));
+    }
   }
 }
 
