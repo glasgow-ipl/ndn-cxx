@@ -49,4 +49,14 @@ PacketBase::setCongestionMark(uint64_t mark)
   }
 }
 
+uint16_t
+PacketBase::getFbField(){
+  return this->m_fb_field;
+}
+
+void 
+PacketBase::setFbField(uint16_t fbfield){
+  this->m_fb_field = fbfield; 
+}
+
 } // namespace ndn

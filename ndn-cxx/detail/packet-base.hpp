@@ -40,6 +40,14 @@ public:
    */
   void
   setCongestionMark(uint64_t mark);
+
+  uint16_t 
+  getFbField();
+
+  void
+  setFbField(uint16_t fb);
+
+  uint16_t m_fb_field = 0;
 };
 
 } // namespace ndn
