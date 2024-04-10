@@ -42,7 +42,7 @@ public:
   setCongestionMark(uint64_t mark);
 
   uint16_t 
-  getFbField();
+  getFbField() const;
 
   void
   setFbField(uint16_t fb);

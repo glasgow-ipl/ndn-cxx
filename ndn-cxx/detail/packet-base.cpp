@@ -50,7 +50,7 @@ PacketBase::setCongestionMark(uint64_t mark)
 }
 
 uint16_t
-PacketBase::getFbField(){
+PacketBase::getFbField() const {
   return this->m_fb_field;
 }
 

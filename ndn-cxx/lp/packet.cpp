@@ -178,5 +178,15 @@ Packet::comparePos(uint64_t first, const Block& second) noexcept
   return compareFieldSortOrder(firstInfo, secondInfo);
 }
 
+void
+Packet::set_fbField(uint16_t fbField){
+  this->m_fbField = fbField;
+}
+
+uint16_t
+Packet::get_fbField() const{
+  return this->m_fbField;
+}
+
 } // namespace lp
 } // namespace ndn

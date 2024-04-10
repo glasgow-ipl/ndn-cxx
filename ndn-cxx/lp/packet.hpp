@@ -197,12 +197,17 @@ public: // field access
     return *this;
   }
 
+  uint16_t get_fbField() const;
+  void set_fbField(uint16_t fbField);
+
 private:
   static bool
   comparePos(uint64_t first, const Block& second) noexcept;
 
 private:
   mutable Block m_wire;
+
+  uint16_t m_fbField;
 };
 
 } // namespace lp

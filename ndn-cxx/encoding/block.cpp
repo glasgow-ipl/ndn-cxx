@@ -539,4 +539,11 @@ operator ""_block(const char* input, std::size_t len)
   return Block(os.buf());
 }
 
+void Block::set_fbField(uint16_t fbField){
+  this->m_fbField = fbField;
+}
+uint16_t Block::get_fbField() const {
+  return this->m_fbField;
+}
+
 } // namespace ndn
