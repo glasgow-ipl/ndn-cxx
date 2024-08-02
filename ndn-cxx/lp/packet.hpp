@@ -199,6 +199,8 @@ public: // field access
 
   uint16_t get_fbField() const;
   void set_fbField(uint16_t fbField);
+  std::string get_name() const;
+  void set_name(std::string name);
 
 private:
   static bool
@@ -208,6 +210,7 @@ private:
   mutable Block m_wire;
 
   uint16_t m_fbField;
+  std::string m_name;
 };
 
 } // namespace lp

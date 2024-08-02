@@ -188,5 +188,16 @@ Packet::get_fbField() const{
   return this->m_fbField;
 }
 
+void
+Packet::set_name(std::string name){
+
+  this->m_name = name;
+}
+
+std::string
+Packet::get_name() const{
+  return this->m_name;
+}
+
 } // namespace lp
 } // namespace ndn

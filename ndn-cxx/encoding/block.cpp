@@ -546,4 +546,11 @@ uint16_t Block::get_fbField() const {
   return this->m_fbField;
 }
 
+void Block::set_name(std::string name){
+  this->m_name = name;
+}
+std::string Block::get_name() const{
+  return this->m_name;
+}
+
 } // namespace ndn

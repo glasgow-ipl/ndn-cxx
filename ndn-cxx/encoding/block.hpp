@@ -517,10 +517,12 @@ protected:
   operator<<(std::ostream& os, const Block& block);
 
   uint16_t m_fbField = 0;
-
+  std::string m_name = "";
 public:
   uint16_t get_fbField() const;
   void set_fbField(uint16_t fbField);
+  std::string get_name() const;
+  void set_name(std::string name);
 
 };
 
